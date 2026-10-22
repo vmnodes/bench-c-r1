@@ -1,6 +1,6 @@
 {
   "name": "loans",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Who has the laptops, cameras and projector, and when they are due back.",
   "main": "server.js",

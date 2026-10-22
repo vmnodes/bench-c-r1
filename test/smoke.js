@@ -127,14 +127,14 @@ const daysFromNow = (n) => ymd(new Date(Date.now() + n * 86400000));
   check("nothing was added by the refused posts (2 loans: camera and projector)", (await json(await keeper(), "GET", "/api/loans")).json().items.length, 2);
 
   // --- 5. Double-submit: the same id is the same loan -------------------------
-  const dup = { id: "11111111-2222-4333-8444-555555555555", item: "Laptop 9", borrower: "Cy", dueOn: "2026-11-01" };
+  const dup = { id: "11111111-2222-4333-8444-555555555555", item: "Laptop 9", borrower: "Cy", dueOn: "2099-11-01" };
   const d1 = await json(await keeper(), "POST", "/api/loans", dup);
   const d2 = await json(await keeper(), "POST", "/api/loans", dup);
   check("first post with an id -> 201, the same post again -> 200", [d1.status, d2.status], [201, 200]);
   check("...and only one such loan exists", (await json(await keeper(), "GET", "/api/loans")).json().items.filter((l) => l.item === "Laptop 9").length, 1);
   check("CONTROL: without an id, two identical posts are two loans (server makes the ids)", [
-    (await json(await keeper(), "POST", "/api/loans", { item: "Tripod", borrower: "Di", dueOn: "2026-11-01" })).status,
-    (await json(await keeper(), "POST", "/api/loans", { item: "Tripod", borrower: "Di", dueOn: "2026-11-01" })).status,
+    (await json(await keeper(), "POST", "/api/loans", { item: "Tripod", borrower: "Di", dueOn: "2099-11-01" })).status,
+    (await json(await keeper(), "POST", "/api/loans", { item: "Tripod", borrower: "Di", dueOn: "2099-11-01" })).status,
   ], [201, 201]);
 
   // --- 6. Text is escaped when it goes into the page --------------------------
@@ -142,17 +142,25 @@ const daysFromNow = (n) => ymd(new Date(Date.now() + n * 86400000));
   const pageHtml = (await request(`${portal.issuer}/`)).body;
   check("typed text is escaped, not run as markup", pageHtml.includes("Camera &lt;b&gt;2&lt;/b&gt;") && !pageHtml.includes("<b>2</b>"), true);
   check("the old overdue loan says Overdue", pageHtml.includes("Overdue"), true);
+  // Overdue rows are red (class "overdue") and come before every row that is not overdue.
+  const outBody = pageHtml.split('id="out">')[1].split("</tbody>")[0];
+  const outRowsHtml = outBody.split("<tr").slice(1);
+  const overdueFlags = outRowsHtml.map((r) => r.startsWith(' class="overdue"'));
+  check("CONTROL: at least one overdue row and one that is not overdue are on the page", [overdueFlags.includes(true), overdueFlags.includes(false)], [true, true]);
+  check("overdue rows are marked red and all come before the rows that are not overdue", overdueFlags.join() === [...overdueFlags].sort((a, b) => b - a).join(), true);
+  check("the overdue rows are exactly the ones whose due date has passed", outRowsHtml.every((r) => r.startsWith(' class="overdue"') === /Overdue<\/span>/.test(r)), true);
+  check("the page says how many are overdue", /id="overdue-count">\d+ overdue</.test(pageHtml), true);
   portal.setUser("reader");
   const readerPage = await request(`${portal.issuer}/`);
   check("a person without the role gets a 403 page, not the list", [readerPage.status, readerPage.body.includes("Camera")], [403, false]);
   portal.setUser("editor");
 
   // --- 7. A form post works the way the page does it --------------------------
-  const formBody = new URLSearchParams({ id: "99999999-2222-4333-8444-555555555555", item: "Form item", borrower: "Eve", takenOn: "2026-10-20", dueOn: "2026-10-27" }).toString();
+  const formBody = new URLSearchParams({ id: "99999999-2222-4333-8444-555555555555", item: "Form item", borrower: "Eve", takenOn: "2026-10-20", dueOn: "2099-10-27" }).toString();
   const formPost = await request(`${portal.issuer}/loans`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: formBody });
   check("a form post answers 303 back to the list", [formPost.status, formPost.headers.location], [303, "/"]);
   check("...and the loan is on the page", (await request(`${portal.issuer}/`)).body.includes("Form item"), true);
-  const formBad = await request(`${portal.issuer}/loans`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "item=&borrower=x&dueOn=2026-10-27" });
+  const formBad = await request(`${portal.issuer}/loans`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "item=&borrower=x&dueOn=2099-10-27" });
   check("a bad form post answers 400 with the message on the page", [formBad.status, formBad.body.includes("item is required")], [400, true]);
 
   // --- 8. Returning --------------------------------------------------------------
@@ -197,7 +205,7 @@ const daysFromNow = (n) => ymd(new Date(Date.now() + n * 86400000));
     check("two loans are added", [p1.status, p2.status], [201, 201]);
     await call(`/api/loans/${p1.json().id}/return`, "POST");
     check("dates come back as plain dates, not timestamps", (await call("/api/loans", "GET")).json().items.map((l) => [l.takenOn, l.dueOn]), [["2026-10-01", "2026-10-08"], ["2026-10-02", "2026-10-09"]]);
-    const dupe = { id: "aaaaaaaa-2222-4333-8444-555555555555", item: "Mic", borrower: "Cy", dueOn: "2026-11-01" };
+    const dupe = { id: "aaaaaaaa-2222-4333-8444-555555555555", item: "Mic", borrower: "Cy", dueOn: "2099-11-01" };
     check("the same id posted twice -> 201 then 200", [(await call("/api/loans", "POST", dupe)).status, (await call("/api/loans", "POST", dupe)).status], [201, 200]);
     const before = (await call("/api/loans", "GET")).json().items;
     check("CONTROL: three loans before the restart", before.length, 3);

@@ -92,7 +92,7 @@ function checkNewLoan(f, todayDate) {
 
 function shell(title, inner) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title>
-<style>body{font:16px/1.5 system-ui,sans-serif;background:#0b0c10;color:#e8e8ee;max-width:900px;margin:0 auto;padding:16px}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #2a2c35;padding:8px 6px;vertical-align:top}small,th{color:#9a9cab;font-weight:normal}label{display:block;margin-top:8px}input{width:100%;background:#15161c;color:inherit;border:1px solid #2a2c35;border-radius:6px;padding:8px;box-sizing:border-box;font:inherit}button{margin-top:8px;background:#5b5bd6;color:#fff;border:0;border-radius:6px;padding:10px 16px;font:inherit;cursor:pointer}td button{margin-top:0;padding:6px 12px}.err{border:1px solid #d65b5b;border-radius:6px;padding:8px}.late{color:#ff9a9a;font-weight:600}.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row2{grid-template-columns:1fr}}code{font-family:ui-monospace,monospace}:focus-visible{outline:2px solid #b8b8ff;outline-offset:2px}</style></head>
+<style>body{font:16px/1.5 system-ui,sans-serif;background:#0b0c10;color:#e8e8ee;max-width:900px;margin:0 auto;padding:16px}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #2a2c35;padding:8px 6px;vertical-align:top}small,th{color:#9a9cab;font-weight:normal}label{display:block;margin-top:8px}input{width:100%;background:#15161c;color:inherit;border:1px solid #2a2c35;border-radius:6px;padding:8px;box-sizing:border-box;font:inherit}button{margin-top:8px;background:#5b5bd6;color:#fff;border:0;border-radius:6px;padding:10px 16px;font:inherit;cursor:pointer}td button{margin-top:0;padding:6px 12px}.err{border:1px solid #d65b5b;border-radius:6px;padding:8px}.late{color:#ff9a9a;font-weight:600}tr.overdue td{color:#ff8a8a;background:#2a1215;border-bottom-color:#5a2a30}tr.overdue td:first-child{border-left:4px solid #ff6b6b}.alert{color:#ff8a8a;font-weight:600;margin:0 0 8px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row2{grid-template-columns:1fr}}code{font-family:ui-monospace,monospace}:focus-visible{outline:2px solid #b8b8ff;outline-offset:2px}</style></head>
 <body>${inner}</body></html>`;
 }
 
@@ -100,8 +100,11 @@ function page(user, loans, { error = "", values = {} } = {}) {
   const t = today();
   const out = loans.filter((l) => !l.returnedAt).sort(byDueThenTaken);
   const back = loans.filter((l) => l.returnedAt).sort((a, b) => (a.returnedAt < b.returnedAt ? 1 : a.returnedAt > b.returnedAt ? -1 : 0));
+  // `out` is sorted by due date, so every overdue loan (due before today) comes before every other:
+  // overdue ones are red and at the top.
+  const overdueCount = out.filter((l) => l.dueOn < t).length;
   const outRows = out.length
-    ? out.map((l) => `<tr><td>${esc(l.item)}</td><td>${esc(l.borrower)}</td><td>${esc(l.takenOn)}</td><td>${esc(l.dueOn)}${l.dueOn < t ? ` <span class="late">Overdue</span>` : ""}</td>
+    ? out.map((l) => `<tr${l.dueOn < t ? ` class="overdue"` : ""}><td>${esc(l.item)}</td><td>${esc(l.borrower)}</td><td>${esc(l.takenOn)}</td><td>${esc(l.dueOn)}${l.dueOn < t ? ` <span class="late">Overdue</span>` : ""}</td>
 <td><form method="post" action="/loans/${esc(l.id)}/return"><button type="submit" aria-label="Mark ${esc(l.item)} returned">Mark returned</button></form></td></tr>`).join("")
     : `<tr><td colspan="5">Nothing is out.</td></tr>`;
   const backRows = back.length
@@ -117,7 +120,7 @@ function page(user, loans, { error = "", values = {} } = {}) {
 <div class="row2"><div><label for="takenOn">Taken on</label><input id="takenOn" name="takenOn" type="date" required value="${val("takenOn", t)}"></div>
 <div><label for="dueOn">Due back</label><input id="dueOn" name="dueOn" type="date" required value="${val("dueOn")}"></div></div>
 <button type="submit">Add loan</button></form>
-<h2>Out now (${out.length})</h2><table><thead><tr><th>Item</th><th>Who has it</th><th>Taken</th><th>Due back</th><th></th></tr></thead><tbody id="out">${outRows}</tbody></table>
+<h2>Out now (${out.length})</h2>${overdueCount ? `<p class="alert" id="overdue-count">${overdueCount} overdue</p>` : ""}<table><thead><tr><th>Item</th><th>Who has it</th><th>Taken</th><th>Due back</th><th></th></tr></thead><tbody id="out">${outRows}</tbody></table>
 <h2>Returned (${back.length})</h2><table><thead><tr><th>Item</th><th>Who had it</th><th>Taken</th><th>Was due</th><th>Returned</th></tr></thead><tbody id="returned">${backRows}</tbody></table>
 <p id="kept"><small>${esc(KEPT[store.kind])}</small></p>`);
 }
