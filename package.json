@@ -1,0 +1,20 @@
+{
+  "name": "loans",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Who has the laptops, cameras and projector, and when they are due back.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node dev/run-local.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@vmnodes/identity": "file:vendor/vmnodes-identity-0.1.0.tgz",
+    "jose": "^5.9.0",
+    "postgres": "^3.4.9"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "apiVersion": "vmnodes.com/v1",
+  "roles": [
+    {
+      "name": "loans.keeper",
+      "description": "Can see what is on loan, add a loan, and mark an item returned."
+    }
+  ],
+  "database": true
+}
